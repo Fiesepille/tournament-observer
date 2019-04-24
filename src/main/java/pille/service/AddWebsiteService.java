@@ -15,23 +15,29 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import pille.database.dto.WebsiteToObserveDto;
-import pille.database.service.WebsiteToObserveService;
+import pille.database.service.IWebsiteToObserveService;
+import pille.exception.ServiceException;
 
 @Service
-public class AddWebsiteService {
+public class AddWebsiteService implements IAddWebsiteService {
 	
-	private WebsiteToObserveService websiteService;
+	private IWebsiteToObserveService websiteService;
 
 	@Autowired
-	public AddWebsiteService(WebsiteToObserveService websiteService) {
+	public AddWebsiteService(IWebsiteToObserveService websiteService) {
 		this.websiteService = websiteService;
 	}
 
 
 
-	public void addWebsite(String website) throws IOException, ParseException {
+	public void addWebsite(String website) throws ServiceException {
 		
-		Document doc = Jsoup.connect(website).get();
+		Document doc;
+		try {
+			doc = Jsoup.connect(website).get();
+		} catch (IOException e) {
+			throw new ServiceException(e);
+		}
 		List<Element> elements = doc.select("table[width],[border],[cellpadding],[cellspacing]");
 		
 		String header = elements.stream()
@@ -39,7 +45,12 @@ public class AddWebsiteService {
 			.filter(x -> Pattern.matches("Turniere im .*", x))
 			.findFirst().get();
 		
-		Month month = Month.valueOf(new SimpleDateFormat("MMMM", Locale.US).format(new SimpleDateFormat("MMMMM", Locale.GERMAN).parse(header.split(" ")[2])).toUpperCase());
+		Month month;
+		try {
+			month = Month.valueOf(new SimpleDateFormat("MMMM", Locale.US).format(new SimpleDateFormat("MMMMM", Locale.GERMAN).parse(header.split(" ")[2])).toUpperCase());
+		} catch (ParseException e) {
+			throw new ServiceException(e);
+		}
 		
 		WebsiteToObserveDto page = new WebsiteToObserveDto();
 		page.setMonth(month);
